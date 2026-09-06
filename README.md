@@ -9,16 +9,19 @@ your actual cognitive/physiological state rather than just the prompt.
 ```
 [Polar Verity Sense] ─BLE──┐
 [CO2 (SCD-41)] ──USB──┤
-[webcam]       ──v4l2─┤   pollers ──MQTT──> aggregator ──MQTT──> mcp_server ──> Claude Code
-[Muse 2 (offline)]    ┘                                                          (or any MCP client)
-[eye-tracking, future]
+[webcam]       ──v4l2─┤   pollers ──MQTT──> aggregator ──snapshot──> mcp_server ──> Claude Code
+[Muse 2 (offline)]    ┘                        │                                  (or any MCP client)
+[eye-tracking, future]                         └─MQTT (retained)──> other subscribers
 ```
 
 - Each sensor is a small process that publishes raw events to an MQTT topic.
-- The aggregator subscribes, computes derived state (rolling HRV stats,
-  posture-drift summary, focus-window estimate), republishes to `state/*`.
-- The MCP server exposes `get_session_state`, `get_focus_window`,
-  `suggest_intervention` as tools the agent can call.
+- The aggregator subscribes, computes derived state (HRV bucket relative to
+  a session-local baseline, CO2 bucket, focus label, intervention rule),
+  republishes retained to MQTT `state/session/current` and writes the same
+  JSON to an on-disk snapshot. Posture/activity stay `"unknown"` until the
+  webcam poller (v2) lands.
+- The MCP server reads that snapshot and exposes `get_session_state`,
+  `get_focus_window`, `suggest_intervention` as tools the agent can call.
 
 Localhost broker for v0. When you add an RPi as a dedicated sensor host,
 change one line in `config.yaml`.
@@ -34,15 +37,20 @@ change one line in `config.yaml`.
 ## Running v0
 
 ```bash
-# install
-uv sync   # or: pip install -e .
+# install -- uv sync only: it's the one path that honors uv.lock's pinned,
+# hash-verified versions (bleak/polar-python parse untrusted BLE binary
+# protocol data, so an unpinned `pip install -e .` resolving fresh floors
+# is a real supply-chain gap, not just a reproducibility nicety)
+uv sync
 
 # start a local broker (one-time; no sudo needed if docker is set up).
-# Binds loopback only -- see mosquitto.conf, this has no auth.
-docker run -d --rm --name afferent-mosquitto -p 127.0.0.1:1883:1883 \
-  -v "$(pwd)/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro" eclipse-mosquitto
+# docker-compose.yml hardcodes the loopback-only port binding -- see its
+# comment for why that has to live there and not in mosquitto.conf, which
+# has no auth.
+docker compose up -d
 
-# run the MCP server with mocked state (no real sensors wired in yet -- v0)
+# run the MCP server (reads the aggregator's derived state; reports
+# "no data yet" honestly until the aggregator below has published once)
 uv run python -m afferent.mcp_server
 
 # point Claude Code at it via .mcp.json (see below)
@@ -82,12 +90,36 @@ bluetoothctl
 BlueZ remembers the bond after that; `polar_poller` won't need this again
 unless the device gets unpaired or the host's Bluetooth state is reset.
 
-Neither poller feeds `get_session_state` yet -- that's the aggregator (v3),
-still mock-only. Watch raw readings land on the broker directly:
+Watch raw readings land on the broker directly:
 
 ```bash
 docker exec afferent-mosquitto mosquitto_sub -t 'sensors/#' -v
 ```
+
+## Running the aggregator
+
+Turns the raw CO2/HR/PPI streams into the derived state `mcp_server.py`
+actually serves. Needs the broker and at least one poller running first (it
+degrades gracefully with sensors missing -- `hr_bpm`/`hrv_rmssd_ms` just stay
+`null` and `focus_label` reports `"unknown"` rather than fabricating a value).
+
+```bash
+uv run python -m afferent.aggregator
+```
+
+On a 15s tick it publishes the merged state retained to MQTT
+`state/session/current` and writes the same JSON to
+`$XDG_STATE_HOME/afferent/state.json` (falls back to
+`~/.local/state/afferent/state.json`) -- that on-disk snapshot is the
+integration point a separate hook-push tool would read to inject ambient
+state into Claude Code prompts (see ambient-context-design.md and the
+"later" roadmap line below); this repo only computes and publishes it.
+
+`suggest_intervention` is deliberately conservative: only a sustained
+high-CO2 reading fires one today (`"crack a window"`). HRV/posture-driven
+interventions stay `null` until a second, physically independent channel
+(webcam) exists -- see ambient-context-design.md's "Fuse for confidence" on
+why HR and HRV alone don't satisfy that rule.
 
 ## Wiring into Claude Code
 
@@ -111,12 +143,16 @@ sensor inventory, CO₂ build spec, privacy, prior art).
         comparable across devices) → MQTT `sensors/polar/hr`,
         `sensors/polar/hrv`
 - [ ] v2: MediaPipe webcam poller (posture, hands, activity, gaze/presence)
-- [ ] v3: aggregator — derived state, intervention rules, two-channel fusion
+- [x] v3: aggregator — derived state (`state/session/current` + an on-disk
+        snapshot), CO2-only intervention rule. HRV baseline is a per-run
+        simplification (not persisted); two-channel fusion is still gated
+        on webcam (v2) landing — see ambient-context-design.md.
 - [ ] v4: durable per-session protocol the agent can read and conditionally
         apply against state
 - [ ] v5: eye-tracking input channel (when hardware lands)
-- [ ] later: feed a `UserPromptSubmit`-hook ambient-injection surface from
-        `state/*`, complementing this MCP-pull server. Threshold-gated with
-        a decay/re-remind timer, not per-turn — see ambient-context-design.md
-        "Push discipline".
+- [ ] later: a separate `UserPromptSubmit`-hook tool (its own repo, not part
+        of afferent) reads the aggregator's on-disk snapshot and injects
+        ambient state, complementing this MCP-pull server. Threshold-gated
+        with a decay/re-remind timer, not per-turn — see
+        ambient-context-design.md "Push discipline".
 - [ ] vN: factor sensors out to a dedicated RPi host

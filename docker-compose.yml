@@ -1,0 +1,17 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: afferent-mosquitto
+    # Loopback-only, hardcoded here rather than left to a hand-typed `docker
+    # run` flag -- a bare "1883:1883" (dropping the 127.0.0.1 prefix) would
+    # expose an unauthenticated broker carrying live HR/HRV/CO2 to the whole
+    # LAN. mosquitto.conf's own `listener 1883` binds 0.0.0.0 *inside* the
+    # container by necessity -- Docker's port-publish NATs to the
+    # container's bridge IP, not its loopback, so a loopback bind there
+    # would break connectivity rather than harden it. This file is the one
+    # enforcement point; see mosquitto.conf's comment for why it can't live
+    # there instead.
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro

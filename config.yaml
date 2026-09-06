@@ -8,9 +8,7 @@ topics:
   webcam_pose: sensors/webcam/pose
   webcam_activity: sensors/webcam/activity
   co2: sensors/co2
-  state_focus: state/session/focus
-  state_posture: state/session/posture_drift
-  state_session: state/session/window
+  state_current: state/session/current
 
 co2_sensor:
   usb_vid: 0x1a86   # QinHeng Electronics (WCH) -- QT Py ESP32 Pico's serial bridge chip
@@ -33,8 +31,17 @@ thresholds:
   hrv_scattered_rmssd_drop_pct: 30
   posture_drift_degrees: 15
   posture_drift_minutes: 10
+  co2_ppm_elevated: 1000   # ASHRAE-informed floor of the degraded-cognition range
+  co2_ppm_high: 1200       # past this: actionable, "crack a window"
 
 interventions:
   break_after_focused_minutes: 90
   stand_after_slumped_minutes: 15
   hydrate_every_minutes: 60
+
+aggregator:
+  tick_seconds: 15
+  stale_after_seconds: 60
+  hrv_baseline_minutes: 5
+  rmssd_window_minutes: 5
+  rmssd_max_gated_fraction: 0.3

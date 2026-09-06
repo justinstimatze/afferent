@@ -7,8 +7,8 @@ dependencies = [
     "fastmcp>=0.2",
     "paho-mqtt>=2.0",
     "pyyaml>=6.0",
-    "bleak>=0.22",
-    "polar-python>=1.1",
+    "bleak>=3.0.2",
+    "polar-python>=1.1.1",
     "numpy>=1.26",
     "pyserial>=3.5",
 ]
@@ -32,7 +32,14 @@ packages = ["src/afferent"]
 # enforcement — run both (via `make check`) before considering a change done.
 [tool.mypy]
 strict = true
-python_version = "3.11"
+# Matches the actual interpreter this project runs under everywhere (no
+# .python-version pin; `uv sync` resolves 3.13 here and in CI) -- not the
+# requires-python floor above. numpy 2.5's bundled stubs use PEP 695 `type`
+# statements unconditionally, which mypy refuses to parse under a 3.11
+# target ("Type statement is only supported in Python 3.12 and greater"),
+# surfaced now that aggregator.py is the first module to actually import
+# numpy.
+python_version = "3.13"
 
 # polar-python has no py.typed marker despite being internally type-hinted
 # (github.com/zHElEARN/polar-python), so mypy can't see its annotations --
@@ -47,6 +54,4 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "BLE", "S", "DTZ", "PIE", "RUF"]
 # Test asserts are the point, not a security smell.
-# mcp_server.py's random.* calls are all in _mock_state(), v0 placeholder
-# data with no security context -- real sensor data replaces it in v3.
-per-file-ignores = { "tests/*" = ["S101"], "src/afferent/mcp_server.py" = ["S311"] }
+per-file-ignores = { "tests/*" = ["S101"] }

@@ -177,6 +177,12 @@ def main() -> None:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    # --verbose controls this module's own log level, not bleak's. Left
+    # unset, bleak's DEBUG logging dumps every D-Bus property-changed
+    # signal verbatim -- paired-device MACs, the adapter address, this
+    # device's serial/model strings -- none of which --verbose here is
+    # meant to opt into.
+    logging.getLogger("bleak").setLevel(logging.INFO)
     run(_load_config())
 
 
