@@ -78,7 +78,10 @@ def get_session_state() -> dict[str, Any]:
     """Current merged user state: HRV, posture, focus, activity, session minutes.
 
     Returns a flat dict the agent can use directly. Use this before deciding
-    whether to escalate, fan out subagents, or suggest a break.
+    whether to escalate, fan out subagents, or suggest a break. Includes
+    ``factors`` -- the short tags (e.g. "co2_high", "hrv_below_baseline",
+    "hrv_low_confidence") that actually contributed to the buckets/label
+    above, so you can see *why* rather than only trusting the verdict.
     """
     state, data_source, _ = _read_state()
     if state is None:

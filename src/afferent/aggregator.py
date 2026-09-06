@@ -161,6 +161,41 @@ def _intervention_for(co2_ppm: int | None, elevated: int, high: int) -> str | No
     return None
 
 
+def _factors(
+    co2_bucket: str,
+    hrv_bucket: str,
+    session_minutes: float,
+    fatigue_minutes: float,
+    gated_fraction: float | None,
+    low_confidence_gated_fraction: float,
+) -> list[str]:
+    """Which primitives contributed to this tick's buckets/label, as short
+    machine-readable tags -- e.g. so a consumer can see *why* focus_label is
+    "fatigued" instead of only trusting the label. Derived independently from
+    the same primitives _focus_label/_co2_bucket/_hrv_bucket already use, so
+    the two can never silently disagree.
+
+    hrv_low_confidence fires below the hard RMSSD-discard cutoff
+    (rmssd_max_gated_fraction) -- it flags the warning zone where RMSSD is
+    still computed but built on a large-ish gated fraction, so a consumer can
+    discount a "below baseline" reading that's actually thin data.
+    """
+    factors: list[str] = []
+    if co2_bucket == "approaching":
+        factors.append("co2_approaching")
+    elif co2_bucket == "high":
+        factors.append("co2_high")
+    if hrv_bucket == "below baseline":
+        factors.append("hrv_below_baseline")
+    elif hrv_bucket == "warming":
+        factors.append("hrv_warming")
+    if session_minutes >= fatigue_minutes:
+        factors.append("session_over_fatigue_threshold")
+    if gated_fraction is not None and gated_fraction >= low_confidence_gated_fraction:
+        factors.append("hrv_low_confidence")
+    return factors
+
+
 def _session_minutes(start_monotonic: float, now_monotonic: float) -> float:
     return (now_monotonic - start_monotonic) / 60
 
@@ -252,6 +287,17 @@ class _Aggregator:
         )
         intervention = _intervention_for(self._latest_co2, co2_elevated, co2_high)
 
+        total_ppi = len(clean) + gated
+        gated_fraction = gated / total_ppi if total_ppi > 0 else None
+        factors = _factors(
+            co2_bucket,
+            hrv_bucket,
+            session_minutes,
+            self._session_cfg["fatigue_minutes"],
+            gated_fraction,
+            self._thresholds["hrv_low_confidence_gated_fraction"],
+        )
+
         return SessionState(
             timestamp=now_iso(),
             session_minutes=round(session_minutes, 2),
@@ -264,6 +310,7 @@ class _Aggregator:
             posture_label="unknown",
             activity_label="unknown",
             suggested_intervention=intervention,
+            factors=factors,
         )
 
 

@@ -53,7 +53,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bleak", specifier = ">=0.22" },
+    { name = "bleak", specifier = ">=3.0.2" },
     { name = "esptool", marker = "extra == 'firmware'", specifier = ">=4.8" },
     { name = "fastmcp", specifier = ">=0.2" },
     { name = "mediapipe", marker = "extra == 'webcam'", specifier = ">=0.10" },
@@ -61,7 +61,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26" },
     { name = "opencv-python", marker = "extra == 'webcam'", specifier = ">=4.10" },
     { name = "paho-mqtt", specifier = ">=2.0" },
-    { name = "polar-python", specifier = ">=1.1" },
+    { name = "polar-python", specifier = ">=1.1.1" },
     { name = "pyserial", specifier = ">=3.5" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]

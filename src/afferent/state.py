@@ -25,6 +25,11 @@ class SessionState:
     posture_label: str        # upright|drifting|slumped|absent|unknown
     activity_label: str       # "typing" | "talking" | "idle" | "away" | "unknown"
     suggested_intervention: str | None  # null if none
+    factors: list[str]        # which primitives contributed to the buckets/label
+                              # above -- e.g. ["co2_high", "hrv_below_baseline"] --
+                              # so a consumer can see *why*, not just the verdict.
+                              # Independently derived from the same primitives as
+                              # focus_label/co2_bucket/hrv_bucket, never from them.
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

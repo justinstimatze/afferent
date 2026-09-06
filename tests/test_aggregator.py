@@ -1,5 +1,6 @@
 from afferent.aggregator import (
     _co2_bucket,
+    _factors,
     _focus_label,
     _gate_ppi_sample,
     _hrv_bucket,
@@ -140,3 +141,142 @@ def test_intervention_none_when_co2_unknown() -> None:
 
 def test_session_minutes() -> None:
     assert _session_minutes(start_monotonic=0.0, now_monotonic=90.0) == 1.5
+
+
+def test_factors_empty_when_all_normal() -> None:
+    factors = _factors(
+        co2_bucket="normal",
+        hrv_bucket="at baseline",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=0.0,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == []
+
+
+def test_factors_co2_approaching() -> None:
+    factors = _factors(
+        co2_bucket="approaching",
+        hrv_bucket="at baseline",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=0.0,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == ["co2_approaching"]
+
+
+def test_factors_co2_high() -> None:
+    factors = _factors(
+        co2_bucket="high",
+        hrv_bucket="at baseline",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=0.0,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == ["co2_high"]
+
+
+def test_factors_hrv_below_baseline() -> None:
+    factors = _factors(
+        co2_bucket="normal",
+        hrv_bucket="below baseline",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=0.0,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == ["hrv_below_baseline"]
+
+
+def test_factors_hrv_warming() -> None:
+    factors = _factors(
+        co2_bucket="normal",
+        hrv_bucket="warming",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=0.0,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == ["hrv_warming"]
+
+
+def test_factors_hrv_insufficient_data_adds_nothing() -> None:
+    # "insufficient data" isn't a factor on its own -- focus_label already
+    # reports "unknown" for it, and there's nothing actionable to name.
+    factors = _factors(
+        co2_bucket="normal",
+        hrv_bucket="insufficient data",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=0.0,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == []
+
+
+def test_factors_session_over_fatigue_threshold() -> None:
+    factors = _factors(
+        co2_bucket="normal",
+        hrv_bucket="at baseline",
+        session_minutes=95.0,
+        fatigue_minutes=90,
+        gated_fraction=0.0,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == ["session_over_fatigue_threshold"]
+
+
+def test_factors_low_confidence_boundary() -> None:
+    below = _factors(
+        co2_bucket="normal",
+        hrv_bucket="below baseline",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=0.14,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert "hrv_low_confidence" not in below
+
+    at = _factors(
+        co2_bucket="normal",
+        hrv_bucket="below baseline",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=0.15,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert "hrv_low_confidence" in at
+
+
+def test_factors_low_confidence_none_gated_fraction_adds_nothing() -> None:
+    # No PPI events at all yet -- gated_fraction is None, not 0 -- must not
+    # be misread as "perfectly clean data".
+    factors = _factors(
+        co2_bucket="normal",
+        hrv_bucket="warming",
+        session_minutes=10.0,
+        fatigue_minutes=90,
+        gated_fraction=None,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == ["hrv_warming"]
+
+
+def test_factors_combine() -> None:
+    factors = _factors(
+        co2_bucket="high",
+        hrv_bucket="below baseline",
+        session_minutes=95.0,
+        fatigue_minutes=90,
+        gated_fraction=0.2,
+        low_confidence_gated_fraction=0.15,
+    )
+    assert factors == [
+        "co2_high",
+        "hrv_below_baseline",
+        "session_over_fatigue_threshold",
+        "hrv_low_confidence",
+    ]

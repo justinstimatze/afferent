@@ -29,6 +29,9 @@ session:
 
 thresholds:
   hrv_scattered_rmssd_drop_pct: 30
+  hrv_low_confidence_gated_fraction: 0.15  # below rmssd_max_gated_fraction (0.3, hard
+                                            # discard) -- the RMSSD still computes here,
+                                            # but "hrv_low_confidence" tags it as thin data
   posture_drift_degrees: 15
   posture_drift_minutes: 10
   co2_ppm_elevated: 1000   # ASHRAE-informed floor of the degraded-cognition range

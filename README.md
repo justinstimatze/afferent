@@ -121,6 +121,13 @@ interventions stay `null` until a second, physically independent channel
 (webcam) exists -- see ambient-context-design.md's "Fuse for confidence" on
 why HR and HRV alone don't satisfy that rule.
 
+The state also carries `factors`: a list of short tags (e.g. `"co2_high"`,
+`"hrv_below_baseline"`, `"hrv_low_confidence"`) naming which primitives
+actually contributed to the buckets/label, independently derived from the
+same inputs so it can never silently disagree with them. `hrv_low_confidence`
+flags a "below baseline" reading built on a large-ish gated-sample fraction
+-- still computed, but thin data.
+
 ## Wiring into Claude Code
 
 Copy `.mcp.example.json` to `.mcp.json` in this directory (Claude Code reads
