@@ -18,7 +18,7 @@ webcam = ["mediapipe>=0.10", "opencv-python>=4.10"]
 firmware = ["esptool>=4.8", "mpremote>=1.24"]
 
 [dependency-groups]
-dev = ["mypy>=1.14", "ruff>=0.9", "pytest>=8", "types-pyserial>=3.5", "types-PyYAML>=6.0"]
+dev = ["mypy>=1.14", "ruff>=0.9", "pytest>=8", "types-pyserial>=3.5", "types-PyYAML>=6.0.12.20260815"]
 
 [build-system]
 requires = ["hatchling"]
