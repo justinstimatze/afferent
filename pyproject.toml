@@ -5,7 +5,7 @@ description = "Local-first closed-loop biofeedback sensor pipeline, exposed to C
 requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=0.2",
-    "paho-mqtt>=2.0",
+    "paho-mqtt>=2.1.0",
     "pyyaml>=6.0",
     "bleak>=3.0.2",
     "polar-python>=1.1.1",
