@@ -62,6 +62,17 @@ signal type:
 Keep the whole injection to ~200–500 tokens (the community-agreed budget; the
 model deprioritizes long injections anyway).
 
+**Re-remind is session-aware, not a flat interval** (headrace `sensor.go`,
+`earlySessionReRemindWindow`): because of #40216, an injection's true cost is
+roughly its size times every turn *remaining* in the session, so the same
+periodic re-remind is far more expensive fired early in a long session than
+late in a short one. headrace's sensor re-remind (the one signal here with
+unbounded wall-clock-periodic re-firing — git/time/context are all naturally
+infrequent by construction) doubles its interval for a session's first ~30
+minutes, then reverts to the configured cadence. `headrace quality` (see
+headrace's README) measures the accumulated cost directly from real
+sessions rather than leaving it a guess.
+
 ### The ctx% confabulation trap
 
 If a raw string like `ctx23%` is injected, the agent will guess whether it
