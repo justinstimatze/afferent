@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "afferent": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "afferent.mcp_server"],
+      "cwd": "."
+    }
+  }
+}

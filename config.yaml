@@ -1,0 +1,80 @@
+broker:
+  host: localhost
+  port: 1883
+
+topics:
+  polar_hr: sensors/polar/hr
+  polar_hrv: sensors/polar/hrv
+  webcam_pose: sensors/webcam/pose
+  webcam_activity: sensors/webcam/activity
+  co2: sensors/co2
+  keystroke: sensors/keystroke
+  state_current: state/session/current
+
+co2_sensor:
+  usb_vid: 0x1a86   # QinHeng Electronics (WCH) -- QT Py ESP32 Pico's serial bridge chip
+  usb_pid: 0x55d4
+  baud: 115200
+
+polar_sensor:
+  # Verity Sense advertises as "Polar Sense <ID>"; the H10 advertises as
+  # "Polar H10 <ID>" -- this filter must not match the H10, which belongs to
+  # a sibling project and must never be connected to by two pollers at once
+  # (see sensor-hardware.md).
+  device_name_filter: "Polar Sense"
+
+keystroke:
+  # Was off by default; enabled here after proving out
+  # scripts/setup-keystroke-service-account.sh end to end (2026-09-06) --
+  # unlike CO2/HRV (inert without hardware plugged in), this reads every
+  # keystroke on every physical keyboard system-wide (timing + backspace
+  # flag only, never key identity -- see keystroke_poller.py's docstring)
+  # for as long as it runs, which is why it stayed opt-in until the
+  # dedicated raw-input service account existed to run it under (see
+  # SECURITY.md). No device filter needed here (unlike polar_sensor
+  # above): keystroke_poller.py identifies a real keyboard by EV_KEY
+  # capability bits (alphabetic block + spacebar), not a name, reusing
+  # flock's (a public sibling project) already-working approach.
+  enabled: true
+
+session:
+  cool_minutes: 25
+  warm_minutes: 60
+  fatigue_minutes: 90
+
+thresholds:
+  hrv_scattered_rmssd_drop_pct: 30
+  hrv_low_confidence_gated_fraction: 0.15  # below rmssd_max_gated_fraction (0.3, hard
+                                            # discard) -- the RMSSD still computes here,
+                                            # but "hrv_low_confidence" tags it as thin data
+  posture_drift_degrees: 15
+  posture_drift_minutes: 10
+  co2_ppm_elevated: 1000   # ASHRAE-informed floor of the degraded-cognition range
+  co2_ppm_high: 1200       # past this: actionable, "crack a window"
+  keystroke_elevated_per_min: 15  # rough first-cut, not literature-derived like the
+                                  # thresholds above -- untuned until real use data exists
+
+interventions:
+  break_after_focused_minutes: 90
+  stand_after_slumped_minutes: 15
+  hydrate_every_minutes: 60
+
+mcp:
+  # get_session_state() returns raw hr_bpm/hrv_rmssd_ms alongside the derived
+  # buckets by design -- unlike the separate ambient hook tool (an always-on
+  # push with no explicit ask, which is why it only ever injects a bucket,
+  # never a raw ms figure), this is a pull tool: the agent calls it
+  # deliberately, closer to asking you directly "what's your heart rate"
+  # than to an ambient nudge. Set false to restrict every MCP response to
+  # buckets only -- e.g. if a less-trusted MCP client is ever wired in
+  # alongside your own agent, or you just want the stricter default.
+  expose_raw_biometrics: true
+
+aggregator:
+  tick_seconds: 15
+  stale_after_seconds: 60
+  hrv_baseline_minutes: 5
+  rmssd_window_minutes: 5
+  rmssd_max_gated_fraction: 0.3
+  keystroke_window_minutes: 2  # much shorter than the HRV window on purpose --
+                                # this is the fast/dynamic signal, HRV is the slow one

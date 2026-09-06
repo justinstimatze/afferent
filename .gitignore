@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# Local
+.env
+.cache/
+.mcp.json
+
+# defn tool state (local-only)
+.defn/
+
+# poller run output (make run-polar / tail-polar)
+logs/
+
+# plancheck MCP tool's local debug state (not project content)
+.plancheck-debug.json

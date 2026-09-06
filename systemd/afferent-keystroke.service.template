@@ -1,0 +1,56 @@
+# afferent-keystroke.service -- system unit for keystroke_poller.py, run
+# under a dedicated, unprivileged account instead of your own interactive
+# login. Installed by scripts/setup-keystroke-service-account.sh, which
+# substitutes __SERVICE_USER__/__REPO_DIR__ with real values.
+#
+# Why a system unit under a separate account, not a user unit under you
+# (contrast flock/systemd/*.service, which IS a user unit under the
+# interactive account): the `input` group grants raw keyboard read to
+# EVERY process the member account runs, not just this one -- see
+# SECURITY.md. Scoping that grant to a narrow account that runs nothing
+# else means an arbitrary process you run yourself (an unreviewed
+# dependency, a compromised MCP server, anything else under your own
+# login) no longer gains it just because keystroke dynamics is enabled.
+# Unlike flock, this poller has no audio to deliver back to your desktop
+# session, so it doesn't need to run as you -- MQTT is its only output,
+# and IPAddressAllow below confines that to loopback.
+[Unit]
+Description=afferent keystroke_poller (opt-in backspace-burst signal)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_USER__
+WorkingDirectory=__REPO_DIR__
+ExecStart=__REPO_DIR__/.venv/bin/python -m afferent.keystroke_poller
+Restart=on-failure
+RestartSec=5
+
+# Hardening: this account has no login, no home, and does nothing but run
+# this one file. IPAddressAllow confines it to loopback -- the MQTT-analog
+# of flock's own RestrictAddressFamilies=AF_UNIX (flock needs no network at
+# all; this poller needs loopback to reach the broker, so it gets the
+# narrowest thing that still works instead of blocking IP outright).
+NoNewPrivileges=true
+IPAddressDeny=any
+IPAddressAllow=127.0.0.1/32 ::1/128
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+LockPersonality=true
+# MemoryDenyWriteExecute=true is deliberately NOT set here, unlike flock's
+# own unit: bisected live on this host (2026-09-06) via systemd-run with
+# subsets of these flags -- it alone reproduces "RuntimeError: can't start
+# new thread" from paho-mqtt's client.loop_start(), on CPython 3.13 (this
+# project's pinned interpreter). Every other flag here was confirmed not
+# to cause it. Most likely cause: CPython 3.13's more dynamic executable-
+# memory use (tier-2 specializer/JIT-adjacent machinery) trips the seccomp
+# filter this option installs. flock has no such conflict (older/simpler
+# runtime, no JIT-adjacent behavior), which is why its own unit keeps it.
+
+[Install]
+WantedBy=multi-user.target
