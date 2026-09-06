@@ -1,0 +1,40 @@
+broker:
+  host: localhost
+  port: 1883
+
+topics:
+  polar_hr: sensors/polar/hr
+  polar_hrv: sensors/polar/hrv
+  webcam_pose: sensors/webcam/pose
+  webcam_activity: sensors/webcam/activity
+  co2: sensors/co2
+  state_focus: state/session/focus
+  state_posture: state/session/posture_drift
+  state_session: state/session/window
+
+co2_sensor:
+  usb_vid: 0x1a86   # QinHeng Electronics (WCH) -- QT Py ESP32 Pico's serial bridge chip
+  usb_pid: 0x55d4
+  baud: 115200
+
+polar_sensor:
+  # Verity Sense advertises as "Polar Sense <ID>"; the H10 advertises as
+  # "Polar H10 <ID>" -- this filter must not match the H10, which belongs to
+  # a sibling project and must never be connected to by two pollers at once
+  # (see sensor-hardware.md).
+  device_name_filter: "Polar Sense"
+
+session:
+  cool_minutes: 25
+  warm_minutes: 60
+  fatigue_minutes: 90
+
+thresholds:
+  hrv_scattered_rmssd_drop_pct: 30
+  posture_drift_degrees: 15
+  posture_drift_minutes: 10
+
+interventions:
+  break_after_focused_minutes: 90
+  stand_after_slumped_minutes: 15
+  hydrate_every_minutes: 60
