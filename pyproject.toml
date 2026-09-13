@@ -11,7 +11,7 @@ dependencies = [
     "polar-python>=1.1.1",
     "numpy>=1.26",
     "pyserial>=3.5",
-    "evdev>=1.7",
+    "evdev>=2.0.0",
 ]
 
 [project.optional-dependencies]
