@@ -4,7 +4,7 @@ version = "0.0.1"
 description = "Local-first closed-loop biofeedback sensor pipeline, exposed to Claude Code (or any MCP client)"
 requires-python = ">=3.11"
 dependencies = [
-    "fastmcp>=0.2",
+    "fastmcp>=4.0.3",
     "paho-mqtt>=2.0",
     "pyyaml>=6.0",
     "bleak>=3.0.2",
