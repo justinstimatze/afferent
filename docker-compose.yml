@@ -1,0 +1,17 @@
+services:
+  mosquitto:
+    # Pinned by digest, since a tag can be reassigned. Bump deliberately by
+    # pulling a newer image and updating the digest.
+    image: eclipse-mosquitto@sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797
+    container_name: afferent-mosquitto
+    # Loopback-only. A bare "1883:1883" (dropping the 127.0.0.1 prefix) would
+    # expose an unauthenticated broker carrying live HR/HRV/CO2 to the whole
+    # LAN. mosquitto.conf binds 0.0.0.0 inside the container because Docker
+    # forwards to the container's bridge IP, so this port mapping is the one
+    # place the loopback restriction is enforced.
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro

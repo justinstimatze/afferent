@@ -1,0 +1,53 @@
+# afferent-keystroke.service -- system unit for keystroke_poller.py, run
+# under a dedicated, unprivileged account instead of your own interactive
+# login. Installed by scripts/setup-keystroke-service-account.sh, which
+# substitutes __SERVICE_USER__/__REPO_DIR__ with real values.
+#
+# Why a system unit under a separate account: the `input` group grants raw
+# keyboard read to EVERY process the member account runs, not just this one
+# (see SECURITY.md). Scoping that grant to a narrow account that runs
+# nothing else means an arbitrary process you run under your own login (an
+# unreviewed dependency, a compromised MCP server) does not gain it just
+# because keystroke dynamics is enabled. MQTT is this poller's only output,
+# and IPAddressAllow below confines it to loopback.
+[Unit]
+Description=afferent keystroke_poller (backspace-burst signal)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_USER__
+WorkingDirectory=__REPO_DIR__
+ExecStart=__REPO_DIR__/.venv/bin/python -m afferent.keystroke_poller
+Restart=on-failure
+RestartSec=5
+
+# Hardening: this account has no login and no home, and runs only this
+# poller. IPAddressAllow confines it to loopback, which is all it needs to
+# reach the broker.
+NoNewPrivileges=true
+CapabilityBoundingSet=
+UMask=0077
+PrivateTmp=true
+IPAddressDeny=any
+IPAddressAllow=127.0.0.1/32 ::1/128
+RestrictAddressFamilies=AF_INET AF_INET6
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# MemoryDenyWriteExecute=true is deliberately not set: with CPython 3.13 it
+# makes paho-mqtt's client.loop_start() fail with "RuntimeError: can't start
+# new thread".
+
+[Install]
+WantedBy=multi-user.target
