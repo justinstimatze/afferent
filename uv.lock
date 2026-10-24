@@ -57,7 +57,7 @@ requires-dist = [
     { name = "bleak", specifier = ">=3.0.2" },
     { name = "esptool", marker = "extra == 'firmware'", specifier = ">=4.8" },
     { name = "evdev", specifier = ">=1.7" },
-    { name = "fastmcp", specifier = ">=0.2" },
+    { name = "fastmcp", specifier = ">=4.1.2" },
     { name = "mediapipe", marker = "extra == 'webcam'", specifier = ">=0.10" },
     { name = "mpremote", marker = "extra == 'firmware'", specifier = ">=1.24" },
     { name = "numpy", specifier = ">=1.26" },
